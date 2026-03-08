@@ -16,19 +16,19 @@ task/
 │   └── role.py            ✅ Complete
 ├── tools/                
 │   ├── base.py            ✅ Abstract base tool interface
-│   ├── web_search.py               🚧 TODO: implement all points described in TODO seactions
+│   ├── web_search.py               🚧+ TODO: implement all points described in TODO seactions
 │   └── user/                       
 │       ├── base.py                 ✅ Abstraction for user service related tools
-│       ├── create_user_tool.py     🚧 TODO: implement all points described in TODO seactions
-│       ├── update_user_tool.py     🚧 TODO: implement all points described in TODO seactions
-│       ├── delete_user_tool.py     🚧 TODO: implement all points described in TODO seactions
-│       ├── get_user_by_id_tool.py  🚧 TODO: implement all points described in TODO seactions
-│       ├── search_users_tool.py    🚧 TODO: implement all points described in TODO seactions
+│       ├── create_user_tool.py     🚧+ TODO: implement all points described in TODO seactions
+│       ├── update_user_tool.py     🚧+ TODO: implement all points described in TODO seactions
+│       ├── delete_user_tool.py     🚧+ TODO: implement all points described in TODO seactions
+│       ├── get_user_by_id_tool.py  🚧+ TODO: implement all points described in TODO seactions
+│       ├── search_users_tool.py    🚧+ TODO: implement all points described in TODO seactions
 │       └── models/           
 │           └── user_info.py  ✅ Complete  
-├── client.py   🚧 TODO: implement all points described in TODO seactions
-├── prompts.py  🚧 TODO: provide system prompt
-└── app.py      🚧 Add tool configs and play with different models
+├── client.py   🚧+ TODO: implement all points described in TODO seactions
+├── prompts.py  🚧+ TODO: provide system prompt
+└── app.py      🚧+ Add tool configs and play with different models
 ```
 
 ## 📋 Requirements
