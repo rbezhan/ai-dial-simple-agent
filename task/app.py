@@ -57,7 +57,6 @@ def main():
 
         ai_message = client.get_completion(conversation.get_messages(), print_request=True)
         conversation.add_message(ai_message)
-        print("🤖:", ai_message.content)
         print("=" * 100)
         print()
 

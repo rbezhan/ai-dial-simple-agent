@@ -37,46 +37,90 @@ class DialClient:
         request_data = {
             "messages": [msg.to_dict() for msg in messages],
             "tools": self.__tools_schemas,
+            "stream": True,
         }
 
         if print_request:
             print(self.__endpoint)
             print("REQUEST:", json.dumps({"messages": [msg.to_dict() for msg in messages]}, indent=2))
 
-        response = requests.post(url=self.__endpoint, headers=headers, json=request_data)
+        response = requests.post(url=self.__endpoint, headers=headers, json=request_data, stream=True)
 
-        if response.status_code == 200:
-            data = response.json()
-
-            choices = data.get("choices", [])
-            if choices:
-                choice = choices[0]
-                print("RESPONSE:", json.dumps(choice, indent=2))
-                print("-"*100)
-
-                message_data = choice.get("message", {})
-                content = message_data.get("content")
-                tool_calls = message_data.get("tool_calls")
-
-                ai_response = Message(
-                    role=Role.AI,
-                    content=content,
-                    tool_calls=tool_calls
-                )
-
-                if choice.get("finish_reason") == "tool_calls":
-                    messages.append(ai_response)
-
-                    tool_messages = self._process_tool_calls(tool_calls)
-                    messages.extend(tool_messages)
-
-                    # Recursive call to get final response
-                    return self.get_completion(messages, print_request)
-
-                return ai_response
-            raise ValueError("No Choice has been present in the response")
-        else:
+        if response.status_code != 200:
             raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+        content_parts: list[str] = []
+        # tool_calls_map: index -> {"id": str, "name": str, "arguments": str}
+        tool_calls_map: dict[int, dict[str, str]] = {}
+        finish_reason: str | None = None
+
+        print("\n\n\n\n🤖: ", end="", flush=True)
+        for line in response.iter_lines():
+            if not line:
+                continue
+            text = line.decode("utf-8") if isinstance(line, bytes) else line
+            if not text.startswith("data: "):
+                continue
+            payload = text[len("data: "):]
+            if payload == "[DONE]":
+                break
+
+            chunk = json.loads(payload)
+            choices = chunk.get("choices", [])
+            if not choices:
+                continue
+
+            delta = choices[0].get("delta", {})
+            finish_reason = choices[0].get("finish_reason") or finish_reason
+
+            # Accumulate content
+            if delta.get("content"):
+                token = delta["content"]
+                content_parts.append(token)
+                print(token, end="", flush=True)
+
+            # Accumulate tool call deltas
+            for tc_delta in delta.get("tool_calls", []):
+                idx = tc_delta["index"]
+                if idx not in tool_calls_map:
+                    tool_calls_map[idx] = {"id": "", "name": "", "arguments": ""}
+                entry = tool_calls_map[idx]
+                if tc_delta.get("id"):
+                    entry["id"] += tc_delta["id"]
+                fn = tc_delta.get("function", {})
+                if fn.get("name"):
+                    entry["name"] += fn["name"]
+                if fn.get("arguments"):
+                    entry["arguments"] += fn["arguments"]
+
+        print()  # newline after streamed content
+
+        content = "".join(content_parts) or None
+        tool_calls: list[dict[str, Any]] | None = None
+        if tool_calls_map:
+            tool_calls = [
+                {
+                    "id": entry["id"],
+                    "type": "function",
+                    "function": {
+                        "name": entry["name"],
+                        "arguments": entry["arguments"],
+                    },
+                }
+                for entry in tool_calls_map.values()
+            ]
+            print("TOOL CALLS:", json.dumps(tool_calls, indent=2))
+            print("-" * 100)
+
+        ai_response = Message(role=Role.AI, content=content, tool_calls=tool_calls)
+
+        if finish_reason == "tool_calls":
+            messages.append(ai_response)
+            tool_messages = self._process_tool_calls(tool_calls)
+            messages.extend(tool_messages)
+            return self.get_completion(messages, print_request)
+
+        return ai_response
 
 
     def _process_tool_calls(self, tool_calls: list[dict[str, Any]]) -> list[Message]:
